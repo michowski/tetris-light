@@ -1,0 +1,277 @@
+<html style="font-size: 40px; line-height: 0.6; text-align: center;">
+	<pre id="g" style="display: inline-block;"></pre>
+	<script>
+		var pieces = [
+				// Pieces are made of "points" from 0 to 7
+				// 0123
+				// 4567
+
+				// 1. Bar
+				// ----
+				// XXXX
+				[4,5,6,7],
+				// 2. L (flipped)
+				// X---
+				// XXX-
+				[0,4,5,6],
+				// 3. L
+				// --X-
+				// XXX-
+				[2,4,5,6],
+				// 4. Square
+				// -XX-
+				// -XX-
+				[1,2,5,6],
+				// 5. S
+				// -XX-
+				// XX--
+				[1,2,4,5],
+				// 6. Triangle
+				// -X--
+				// XXX-
+				[1,4,5,6],
+				// 7. S (flipped)
+				// XX--
+				// -XX-
+				[0,1,5,6]
+		].map( function(points) {
+			var piece = [], x, y;
+			points.forEach( function( i ) {
+				x = i % 4;
+				y = Math.floor( i / 4 );
+
+				piece.push([x,y]);
+			});
+
+			return piece;
+		});
+
+		// Gameplay area
+		var areaSizeX = 10;
+		var areaSizeY = 16;
+		var area = [];
+
+		var score;
+
+		// Game state:
+		// 0 - not gameplay
+		// 1 - gameplay
+		var gameState;
+
+		// Current piece: array of points and position
+		var current;
+		var currentId;
+		var currentX;
+		var currentY;
+
+		// Block character
+		var blockUnit = '□';
+
+		var startMessage = 'PRESS ANY KEY\n\nTO START NEW GAME.';
+
+		function gamePlayStart() {
+			score = 0;
+
+			for( var i = 0; i < areaSizeX; i++ ) {
+				area[i] = [];
+				for( var j = 0; j < areaSizeY; j++ ) {
+					area[i][j] = 0;
+				}
+			}
+
+			createRandomPiece();
+			render();
+
+			gameState = 1;
+		}
+
+		function moveIfFree( vectorX, vectorY ) {
+			// Check if the place for moved piece's position is free
+			var isAreaFree = current.every( function (point) {
+				var x = point[0] + currentX + vectorX;
+				var y = point[1] + currentY + vectorY;
+
+				return ( x >= 0 && x <= areaSizeX - 1 && y <= areaSizeY - 1 && !area[x][y] )
+			});
+
+			// Move current piece if possible
+			if ( isAreaFree ) {
+				currentX += vectorX;
+				currentY += vectorY;
+				render();
+			}
+
+			return isAreaFree;
+		}
+
+		function print( view ) {
+			document.querySelector('#g').innerHTML = view;
+		}
+
+		function createRandomPiece() {
+			currentId = Math.floor(Math.random()*pieces.length);
+			current = pieces[currentId];
+
+			currentX = Math.floor(Math.random() * ( areaSizeX - 3 ));
+			currentY = -2;
+
+			var rot = Math.floor(Math.random() * 3);
+			for( var i = 0; i < rot; i++ ) {
+				rotate();
+			}
+		}
+
+		function step() {
+			// If piece can't move unit down
+			if ( !moveIfFree( 0, 1 ) ) {
+				// If piece is stuck at the top, the game is lost
+				if ( current.some( function( point) {
+					return point[1] + currentY < 1
+				})) {
+					print( 'GAME OVER.\n\n\nSCORE: ' + score + '\n\n\n' + startMessage );
+					gameState = 0;
+				}
+				else {
+					// Attach current object to the game area
+					current.forEach( function( point ) {
+						area[point[0] + currentX][point[1] + currentY] = 1;
+					});
+
+					// Create new piece
+					createRandomPiece();
+
+					// Check for full horizontal lines in game area
+					var lines = [];
+					var line;
+					for( var i = 0; i < areaSizeY; i++ ) {
+						line = true;
+						for ( var j = 0; j < areaSizeX; j++ ) {
+							if ( !area[j][i] ) {
+								line = false;
+								break;
+							}
+						}
+						if ( line ) {
+							lines.unshift(i);
+						}
+					}
+
+					// Remove horizontal lines if there are any
+					if ( lines.length ) {
+						score += lines.length;
+
+						// Iterate through all lines and shift by "levels" units
+						var levels = 1;
+						for( i = lines.shift() - 1; i >= 0; i-- ) {
+							if ( lines.length ) {
+								if ( lines[0] === i ) {
+									lines.shift();
+									levels++;
+									continue;
+								}
+							}
+
+							// Move line down by "levels" unit
+							for( j = 0; j < areaSizeX; j++ ) {
+								area[j][i + levels] = area[j][i];
+							}
+						}
+					}
+
+					render();
+				}
+			}
+		}
+
+		function render() {
+			// Copy the area array and add current piece to it
+			var areaWithCurrent = JSON.parse(JSON.stringify(area));
+			current.forEach( function( point ) {
+				areaWithCurrent[point[0] + currentX][point[1] + currentY] = 1;
+			});
+
+			// Add score to the view
+			var view = 'SCORE: ' + '0'.repeat( areaSizeX - (score + "").length - 5 ) + score + '\n';
+
+			// Add the area matrix with borders to the view
+			view += blockUnit.repeat( areaSizeX + 2 ) + '\n';
+			for( var i = 0; i < areaSizeY; i++ ) {
+				view += blockUnit;
+				for ( var j = 0; j < areaSizeX; j++ ) {
+					view += ( areaWithCurrent[j][i] ? '■' : ' ' );
+				}
+				view += blockUnit + '\n';
+			}
+			view += blockUnit.repeat( areaSizeX + 2 );
+
+			print(view);
+		}
+
+		function rotate() {
+			// If current piece is a square
+			if ( currentId === 3 ) {
+				return;
+			}
+
+			var newCurrent = [];
+			var canRotate = true;
+
+			current.forEach( function( point ) {
+				var x = 2 - point[1];
+				var y = point[0];
+
+				// If current piece is a bar and it is vertical
+				if ( currentId === 0 && current[0][0] == current[1][0] ) {
+					x += 1;
+				}
+
+				if ( x + currentX < 0 || y + currentY < 0 || x + currentX >= areaSizeX || y + currentY >= areaSizeY ) {
+					canRotate = false;
+				}
+				else if ( area[x + currentX][y + currentY] ) {
+					canRotate = false;
+				}
+
+				newCurrent.push([x, y]);
+			});
+
+			if ( canRotate ) {
+				current = newCurrent;
+				render();
+			}
+		}
+
+		function loop() {
+			// If gameState === 1 then step()
+			gameState && step();
+		}
+
+		// Game actions are bind to key codes
+		var keyMap = {
+			37: moveIfFree.bind(null, -1, 0), 	// Move left
+			39: moveIfFree.bind(null,  1, 0), 	// Move right
+			40: moveIfFree.bind(null,  0, 1),	// Move bottom (speed up)
+			38: rotate							// Rotate current piece
+		};
+
+		document.onkeydown = function(e) {
+			// If the game is being played
+			if ( gameState ) {
+				// If the action exists for the key pressed
+				if ( e.keyCode in keyMap ) {
+					// Run an action based on key code
+					keyMap[e.keyCode]();
+				}
+			}
+		};
+
+		document.onkeypress = function() {
+			// If gameState === 0 then gamePlayStart()
+			!gameState && gamePlayStart();
+		};
+
+		// Print a welcome message and start the game loop
+		print(startMessage);
+		setInterval(loop, 400);
+	</script>
+</html>
