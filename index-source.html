@@ -35,15 +35,11 @@
 				// -XX-
 				[0,1,5,6]
 		].map( function(points) {
-			var piece = [], x, y;
-			points.forEach( function( i ) {
-				x = i % 4;
-				y = Math.floor( i / 4 );
-
-				piece.push([x,y]);
+			return points.map( function( i ) {
+				var x = i % 4;
+				var y = Math.floor( i / 4 );
+				return [x, y];
 			});
-
-			return piece;
 		});
 
 		// Gameplay area
