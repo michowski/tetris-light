@@ -244,26 +244,23 @@
 
 		// Game actions are bind to key codes
 		var keyMap = {
-			37: moveIfFree.bind(null, -1, 0), 	// Move left
-			39: moveIfFree.bind(null,  1, 0), 	// Move right
-			40: moveIfFree.bind(null,  0, 1),	// Move bottom (speed up)
-			38: rotate							// Rotate current piece
+			ArrowLeft:  moveIfFree.bind(null, -1, 0), 	// Move left
+			ArrowRight: moveIfFree.bind(null,  1, 0), 	// Move right
+			ArrowDown:  moveIfFree.bind(null,  0, 1),	// Move bottom (speed up)
+			ArrowUp:    rotate							// Rotate current piece
 		};
 
 		document.onkeydown = function(e) {
 			// If the game is being played
 			if ( gameState ) {
 				// If the action exists for the key pressed
-				if ( e.keyCode in keyMap ) {
+				if ( e.key in keyMap ) {
 					// Run an action based on key code
-					keyMap[e.keyCode]();
+					keyMap[e.key]();
 				}
+			} else {
+				gamePlayStart();
 			}
-		};
-
-		document.onkeypress = function() {
-			// If gameState === 0 then gamePlayStart()
-			!gameState && gamePlayStart();
 		};
 
 		// Print a welcome message and start the game loop
